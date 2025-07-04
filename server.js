@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const stripe = require("stripe")("sk_test_yourSecretKey"); // ⬅️ echten Secret Key einfügen
+require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const mysql = require("mysql2/promise");
 
 const app = express();
@@ -9,7 +10,7 @@ app.use(cors({ origin: "https://www.olympspa.com" }));
 app.use(express.static("public"));
 app.use(express.json());
 
-// MySQL-Datenbankverbindung (über Swizzonic)
+// MySQL-Pool (über Swizzonic)
 const pool = mysql.createPool({
   host: "lhcp5014.webapps.net",
   user: "bt6iim29_lagerbestand",
@@ -21,22 +22,22 @@ const pool = mysql.createPool({
 });
 
 app.post("/create-checkout-session", async (req, res) => {
-  try {
-    const connection = await pool.getConnection();
+  let connection;
 
-    // Lagerbestand prüfen
+  try {
+    connection = await pool.getConnection();
+
+    // 1. Lager prüfen
     const [rows] = await connection.query(
       "SELECT * FROM lagerbestand WHERE produktname = ?",
       ["T-Shirt"]
     );
 
-    const produkt = rows[0];
-    if (!produkt || produkt.bestand < 1) {
-      connection.release();
+    if (!rows.length || rows[0].bestand < 1) {
       return res.status(400).json({ error: "Produkt nicht auf Lager." });
     }
 
-    // Stripe Checkout Session erstellen
+    // 2. Stripe-Session erstellen
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -56,25 +57,26 @@ app.post("/create-checkout-session", async (req, res) => {
       cancel_url: "https://www.olympspa.com/cancel.html",
     });
 
-    // Verkauf protokollieren
+    // 3. Verkauf speichern
     await connection.query(
       "INSERT INTO verkaufte_artikel (produktname, betrag) VALUES (?, ?)",
       ["T-Shirt", 1999]
     );
 
-    // Lagerbestand aktualisieren
+    // 4. Bestand reduzieren
     await connection.query(
       "UPDATE lagerbestand SET bestand = bestand - 1 WHERE produktname = ?",
       ["T-Shirt"]
     );
 
-    connection.release();
     res.json({ url: session.url });
   } catch (e) {
-    console.error("Fehler:", e);
-    res.status(500).json({ error: "Interner Serverfehler: " + e.message });
+    console.error("❌ Fehler beim Checkout:", e);
+    res.status(500).json({ error: "Interner Serverfehler" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server läuft auf http://localhost:${port}`));
+app.listen(port, () => console.log(`✅ Server läuft auf http://localhost:${port}`));
