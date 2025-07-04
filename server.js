@@ -26,14 +26,16 @@ app.post("/create-checkout-session", async (req, res) => {
 
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction(); // Transaktion starten
 
-    // 1. Lager prüfen
+    // 1. Lager prüfen + sperren
     const [rows] = await connection.query(
-      "SELECT * FROM lagerbestand WHERE produktname = ?",
+      "SELECT bestand FROM lagerbestand WHERE produktname = ? FOR UPDATE",
       ["T-Shirt"]
     );
 
     if (!rows.length || rows[0].bestand < 1) {
+      await connection.rollback(); // Transaktion zurückrollen
       return res.status(400).json({ error: "Produkt nicht auf Lager." });
     }
 
@@ -69,8 +71,11 @@ app.post("/create-checkout-session", async (req, res) => {
       ["T-Shirt"]
     );
 
+    await connection.commit(); // Transaktion abschließen
     res.json({ url: session.url });
+
   } catch (e) {
+    if (connection) await connection.rollback(); // Fehler? Rollback!
     console.error("❌ Fehler beim Checkout:", e);
     res.status(500).json({ error: "Interner Serverfehler" });
   } finally {
