@@ -78,9 +78,7 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`✅ Server läuft auf http://localhost:${port}`));
-
+// Route für Lagerbestand
 app.get("/lagerbestand", async (req, res) => {
   let connection;
   try {
