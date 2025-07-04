@@ -80,3 +80,20 @@ app.post("/create-checkout-session", async (req, res) => {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`✅ Server läuft auf http://localhost:${port}`));
+
+app.get("/lagerbestand", async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [rows] = await connection.query("SELECT produktname, bestand FROM lagerbestand");
+    res.json(rows);
+  } catch (e) {
+    console.error("Fehler beim Abfragen des Lagerbestands:", e);
+    res.status(500).json({ error: "Interner Serverfehler" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`✅ Server läuft auf http://localhost:${port}`));
