@@ -1,6 +1,12 @@
 const express = require("express");
+const cors = require("cors");
+const stripe = require("stripe")("sk_test_yourSecretKey"); // ⬅️ Ersetze durch deinen echten Stripe Secret Key
+
 const app = express();
-const stripe = require("stripe")("sk_test_yourSecretKey"); // Dein Secret Key
+
+app.use(cors({
+  origin: "https://www.olympspa.com"
+}));
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -17,13 +23,13 @@ app.post("/create-checkout-session", async (req, res) => {
             product_data: {
               name: "Beispielprodukt",
             },
-            unit_amount: 1999, // in Cent: $19.99
+            unit_amount: 1999, // Preis in Cent ($19.99)
           },
           quantity: 1,
         },
       ],
-      success_url: "https://deine-domain.com/success",
-      cancel_url: "https://deine-domain.com/cancel",
+      success_url: "https://www.olympspa.com/success.html",
+      cancel_url: "https://www.olympspa.com/cancel.html",
     });
 
     res.json({ url: session.url });
@@ -32,4 +38,5 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Server läuft auf http://localhost:3000"));
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server läuft auf http://localhost:${port}`));
