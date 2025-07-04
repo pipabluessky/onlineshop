@@ -2,7 +2,27 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mini Onlineshop</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      background-color: #2a63f5;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
   <h1>Beispielprodukt: T-Shirt</h1>
@@ -10,7 +30,12 @@
   <button id="checkout-button">Jetzt kaufen</button>
 
   <script>
-    document.getElementById("checkout-button").addEventListener("click", async () => {
+    const button = document.getElementById("checkout-button");
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Wird geladen...";
+
       try {
         const response = await fetch("https://onlineshop-1-sp4b.onrender.com/create-checkout-session", {
           method: "POST",
@@ -22,12 +47,16 @@
         const data = await response.json();
 
         if (data.url) {
-          window.location.href = data.url; // Weiterleitung zu Stripe Checkout
+          window.location.href = data.url;
         } else {
           alert("Fehler beim Erstellen der Checkout-Session");
+          button.disabled = false;
+          button.textContent = "Jetzt kaufen";
         }
       } catch (error) {
         alert("Netzwerkfehler: " + error.message);
+        button.disabled = false;
+        button.textContent = "Jetzt kaufen";
       }
     });
   </script>
